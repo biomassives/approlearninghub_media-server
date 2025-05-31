@@ -1,0 +1,126 @@
+# docker-compose
+version: '3.8'
+services:
+  # 1. Parse Server Service
+  parse-server:
+    image: parseplatform/parse-server:latest
+    container_name: my-parse-server-local
+    restart: unless-stopped
+    ports:
+      - "1337:1337"
+    environment:
+      - PARSE_SERVER_APPLICATION_ID=MY_LOCAL_APP_ID
+      - PARSE_SERVER_MASTER_KEY="etiupereEREETertk5erretreJJ01@4@b"
+      - PARSE_SERVER_DATABASE_URI=mongodb://mongo_db:27017/parsedb_dev
+      - PARSE_SERVER_URL=http://localhost:8080/parse
+      - PARSE_SERVER_MOUNT_PATH=/parse
+      - PARSE_SERVER_CLOUD=/parse-server/cloud/main.js
+      - PARSE_SERVER_START_LIVE_QUERY_SERVER=true
+      - PARSE_SERVER_ALLOW_CLIENT_CLASS_CREATION=true
+      - PARSE_SERVER_ENABLE_ANONYMOUS_USERS=true
+    volumes:
+      - ./cloud:/parse-server/cloud
+    depends_on:
+      - mongo_db
+    networks:
+      - parse-app-network
+
+# 2. MongoDB Service
+  mongo_db:
+    image: mongo:6.0
+    container_name: my-mongo-db-local
+    restart: unless-stopped
+    volumes:
+      - mongo_data_local:/data/db
+    networks:
+      - parse-app-network
+
+# 2a. Jitsi Web (UI)
+  jitsi-web:
+    image: jitsi/web:unstable
+    container_name: jitsi-web
+    restart: unless-stopped
+    environment:
+      - ENABLE_LETSENCRYPT=1
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.jitsi.rule=Host(`meet.approvideo.org`)"
+      - "traefik.http.routers.jitsi.entrypoints=websecure"
+      - "traefik.http.routers.jitsi.tls.certresolver=letsencrypt"
+      - "traefik.http.services.jitsi.loadbalancer.server.port=80"
+    networks:
+      - approvideo-net
+
+# 2b. MediaGoblin
+  mediagoblin:
+    image: mediagoblin/mediagoblin:0.14.0
+    container_name: mediagoblin
+    restart: unless-stopped
+    volumes:
+      - mediagoblin_data:/srv/mediagoblin/user_dev
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.mg.rule=Host(`media.approvideo.org`)"
+      - "traefik.http.routers.mg.entrypoints=websecure"
+      - "traefik.http.routers.mg.tls.certresolver=letsencrypt"
+      - "traefik.http.services.mg.loadbalancer.server.port=80"
+    networks:
+      - approvideo-net
+
+# 2c. Etherpad
+  etherpad:
+    image: etherpad/etherpad
+    restart: unless-stopped
+    environment:
+      - TITLE=ApproVideo Shared Notes
+      - DEFAULT_PAD_TEXT=Welcome to Approvideo shared meeting notes!
+      - ADMIN_PASSWORD=changeme
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.etherpad.rule=Host(`pad.approvideo.org`)"
+      - "traefik.http.routers.etherpad.entrypoints=websecure"
+      - "traefik.http.routers.etherpad.tls.certresolver=letsencrypt"
+      - "traefik.http.services.etherpad.loadbalancer.server.port=9001"
+    networks:
+      - approvideo-net
+
+# 3. Caddy Reverse Proxy (local)
+  caddy:
+    image: caddy:latest
+    container_name: my-caddy-local
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - ./Caddyfile.local:/etc/caddy/Caddyfile
+      - caddy_data_local:/data
+      - caddy_config_local:/config
+    depends_on:
+      - parse-server
+    networks:
+      - parse-app-network
+
+# 4. Traefik Reverse Proxy (for domain-based routing and HTTPS)
+  traefik:
+    image: traefik:v2.10
+    container_name: traefik
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./traefik.yml:/etc/traefik/traefik.yml
+      - ./letsencrypt:/letsencrypt
+    networks:
+      - approvideo-net
+
+volumes:
+  mongo_data_local:
+  caddy_data_local:
+  caddy_config_local:
+  mediagoblin_data:
+
+networks:
+  parse-app-network:
+  approvideo-net:
