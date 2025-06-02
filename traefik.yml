@@ -1,0 +1,30 @@
+api:
+  dashboard: true
+
+entryPoints:
+  web:
+    address: ":80"
+  websecure:
+    address: ":443"
+
+log:
+  level: INFO
+
+# ✅ Local development TLS cert
+tls:
+  certificates:
+    - certFile: "/certs/cert.pem"
+      keyFile: "/certs/key.pem"
+
+providers:
+  docker:
+    exposedByDefault: false
+
+# ✅ Production (optional; used only if DNS is public)
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: ecocommunity@protonmail.com
+      storage: /letsencrypt/acme.json
+      httpChallenge:
+        entryPoint: web
