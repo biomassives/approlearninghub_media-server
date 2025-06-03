@@ -1,0 +1,40 @@
+# Caddyfile
+:8080 {
+    # Root directory for static files
+    root * /usr/share/caddy
+    
+    # Serve static files
+    file_server
+    
+    # Handle Parse Server API requests
+    handle /parse/* {
+        reverse_proxy my-parse-server-local:1337
+    }
+    
+    # Handle Parse Dashboard requests
+    handle /dashboard/* {
+        reverse_proxy parse-dashboard:4040
+    }
+    
+    # Handle MediaGoblin requests
+    handle /media/* {
+        reverse_proxy mediagoblin:6543
+    }
+    
+    # Handle Etherpad requests
+    handle /etherpad/* {
+        reverse_proxy etherpad:9001
+    }
+    
+    # CORS headers for all API requests
+    header /parse/* {
+        Access-Control-Allow-Origin *
+        Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+        Access-Control-Allow-Headers "Content-Type, Authorization, X-Parse-Application-Id, X-Parse-REST-API-Key, X-Parse-Master-Key"
+    }
+    
+    # Log everything
+    log {
+        output file /var/log/caddy/access.log
+    }
+}

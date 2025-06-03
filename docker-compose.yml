@@ -1,238 +1,172 @@
-# ApproVideo Self-Hosted Cloud Stack
-# Parse Server + Jitsi Meet + MediaGoblin + Etherpad + Frontend
-version: '3.8'
+# docker-compose.yml - Fixed Configuration
 
 services:
-  # === CORE BACKEND SERVICES ===
-  
-  # 1. MongoDB Database
-  mongo_db:
-    image: mongo:6.0
-    container_name: approvideo-mongo
+  # MongoDB Database
+  my-mongo-db-local:
+    image: mongo:4.4
+    container_name: appro-mongo-local
     restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: secure_password_here
     volumes:
       - mongo_data:/data/db
-    networks:
-      - backend
-    # No ports exposed - only accessible internally
-
-  # 2. Parse Server
-  parse-server:
-    image: parseplatform/parse-server:latest
-    container_name: approvideo-parse
-    restart: unless-stopped
-    environment:
-      - PARSE_SERVER_APPLICATION_ID=MY_LOCAL_APP_ID
-      - PARSE_SERVER_MASTER_KEY=etiupereEREETertk5erretreJJ01@4@b
-      - PARSE_SERVER_DATABASE_URI=mongodb://mongo_db:27017/parsedb_dev
-      - PARSE_SERVER_URL=http://localhost:1337/parse
-      - PARSE_SERVER_MOUNT_PATH=/parse
-      - PARSE_SERVER_CLOUD=/parse-server/cloud/main.js
-      - PARSE_SERVER_START_LIVE_QUERY_SERVER=true
-      - PARSE_SERVER_ALLOW_CLIENT_CLASS_CREATION=true
-      - PARSE_SERVER_SCHEMA_INIT_ON_START=true
-      - PARSE_SERVER_ENABLE_ANONYMOUS_USERS=true
-    volumes:
-      - ./cloud:/parse-server/cloud
-    depends_on:
-      - mongo_db
-    networks:
-      - backend
-      - web
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.parse.rule=Host(`api.approvideo.org`)"
-      - "traefik.http.routers.parse.entrypoints=web,websecure"
-      - "traefik.http.routers.parse.tls=true"
-      - "traefik.http.services.parse.loadbalancer.server.port=1337"
-
-  # === COLLABORATION SERVICES ===
-
-  # 3a. Jitsi Prosody (XMPP Server)
-  prosody:
-    image: jitsi/prosody:stable
-    container_name: approvideo-prosody
-    restart: unless-stopped
-    environment:
-      - ENABLE_AUTH=0
-      - ENABLE_GUESTS=1
-      - XMPP_DOMAIN=meet.jitsi
-      - XMPP_AUTH_DOMAIN=auth.meet.jitsi
-      - XMPP_MUC_DOMAIN=muc.meet.jitsi
-      - XMPP_INTERNAL_MUC_DOMAIN=internal-muc.meet.jitsi
-      - JICOFO_COMPONENT_SECRET=s3cr37
-      - JVB_COMPONENT_SECRET=s3cr37
-      - JICOFO_AUTH_USER=focus
-      - JICOFO_AUTH_PASSWORD=passw0rd
-      - PUBLIC_URL=https://meet.approvideo.org
-    networks:
-      - web
-
-  # 3b. Jitsi Conference Focus (jicofo)
-  jicofo:
-    image: jitsi/jicofo:stable
-    container_name: approvideo-jicofo
-    restart: unless-stopped
-    environment:
-      - XMPP_DOMAIN=meet.jitsi
-      - XMPP_AUTH_DOMAIN=auth.meet.jitsi
-      - XMPP_SERVER=prosody
-      - JICOFO_COMPONENT_SECRET=s3cr37
-      - JICOFO_AUTH_USER=focus
-      - JICOFO_AUTH_PASSWORD=passw0rd
-      - JVB_BREWERY_MUC=jvbbrewery
-      - JICOFO_BRIDGE_MUC=jvbbrewery
-    depends_on:
-      - prosody
-    networks:
-      - web
-
-  # 3c. Jitsi Video Bridge
-  jvb:
-    image: jitsi/jvb:stable
-    container_name: approvideo-jvb
-    restart: unless-stopped
     ports:
-      - "10000:10000/udp"  # Video bridge UDP port
-    environment:
-      - XMPP_DOMAIN=meet.jitsi
-      - XMPP_AUTH_DOMAIN=auth.meet.jitsi
-      - XMPP_SERVER=prosody
-      - JVB_COMPONENT_SECRET=s3cr37
-      - JVB_BREWERY_MUC=jvbbrewery
-      - JVB_PORT=10000
-      - JVB_TCP_HARVESTER_DISABLED=true
-      - JVB_WS_DOMAIN=meet.approvideo.org
-      - JVB_WS_SERVER_ID=default-id
-      - PUBLIC_URL=https://meet.approvideo.org
-    depends_on:
-      - prosody
+      - "27017:27017"
     networks:
-      - web
+      - appro-network
 
-  # 3d. Jitsi Web Interface
-  jitsi-web:
-    image: jitsi/web:stable
-    container_name: approvideo-jitsi
+  # Parse Server
+  my-parse-server-local:
+    image: parseplatform/parse-server:latest
+    container_name: appro-parse-server
     restart: unless-stopped
     environment:
-      - ENABLE_AUTH=0
-      - ENABLE_GUESTS=1
-      - ENABLE_RECORDING=0
-      - XMPP_DOMAIN=meet.jitsi
-      - XMPP_AUTH_DOMAIN=auth.meet.jitsi
-      - XMPP_BOSH_URL_BASE=http://prosody:5280
-      - XMPP_MUC_DOMAIN=muc.meet.jitsi
-      - PUBLIC_URL=https://meet.approvideo.org
-      - JICOFO_AUTH_USER=focus
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.jitsi.rule=Host(`meet.approvideo.org`)"
-      - "traefik.http.routers.jitsi.entrypoints=web,websecure"
-      - "traefik.http.routers.jitsi.tls=true"
-      - "traefik.http.services.jitsi.loadbalancer.server.port=80"
+      PARSE_SERVER_APPLICATION_ID: JfMeozLs8UZFxaZibAiZhlpDl5OZkyjVwzdxLfqw
+      PARSE_SERVER_MASTER_KEY: your_master_key_here_make_it_secure
+      PARSE_SERVER_DATABASE_URI: mongodb://admin:secure_password_here@my-mongo-db-local:27017/parse?authSource=admin
+      PARSE_SERVER_URL: http://localhost:1338/parse
+      PARSE_SERVER_MOUNT_PATH: /parse
+      PARSE_SERVER_ALLOW_ORIGIN: '*'
+      PARSE_SERVER_ENABLE_ANON_USERS: 'true'
+      PARSE_SERVER_ENABLE_CLIENT_SSL: 'false'
+      PARSE_SERVER_LOG_LEVEL: info
+    ports:
+      - "1338:1337"
     depends_on:
-      - prosody
-      - jicofo
-      - jvb
+      - my-mongo-db-local
+    volumes:
+      - ./parse-cloud:/parse-server/cloud
     networks:
-      - web
+      - appro-network
 
-  # 4. MediaGoblin (Media Storage)
+  # Parse Dashboard
+  parse-dashboard:
+    image: parseplatform/parse-dashboard:latest
+    container_name: appro-parse-dashboard
+    restart: unless-stopped
+    environment:
+      PARSE_DASHBOARD_SERVER_URL: http://my-parse-server-local:1337/parse
+      PARSE_DASHBOARD_MASTER_KEY: your_master_key_here_make_it_secure
+      PARSE_DASHBOARD_APP_ID: JfMeozLs8UZFxaZibAiZhlpDl5OZkyjVwzdxLfqw
+      PARSE_DASHBOARD_APP_NAME: "ApproVideo Hub"
+      PARSE_DASHBOARD_USER_ID: admin
+      PARSE_DASHBOARD_USER_PASSWORD: admin_password_here
+      PARSE_DASHBOARD_ALLOW_INSECURE_HTTP: 'true'
+    ports:
+      - "4040:4040"
+    depends_on:
+      - my-parse-server-local
+    networks:
+      - appro-network
+
+  # MediaGoblin (Fixed configuration)
   mediagoblin:
     image: mediagoblin/mediagoblin:0.14.0
-    container_name: approvideo-media
-    restart: unless-stopped
-    volumes:
-      - mediagoblin_data:/srv/mediagoblin/user_dev
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.media.rule=Host(`media.approvideo.org`)"
-      - "traefik.http.routers.media.entrypoints=web,websecure"
-      - "traefik.http.routers.media.tls=true"
-      - "traefik.http.services.media.loadbalancer.server.port=80"
-    networks:
-      - web
-
-  # 5. Etherpad (Collaborative Documents)
-  etherpad:
-    image: etherpad/etherpad
-    container_name: approvideo-pad
+    container_name: appro-mediagoblin
     restart: unless-stopped
     environment:
-      - TITLE=ApproVideo Shared Notes
-      - DEFAULT_PAD_TEXT=Welcome to ApproVideo shared meeting notes! 📝
-      - ADMIN_PASSWORD=changeme_secure_password
-      - REQUIRE_SESSION=false
-      - EDIT_ONLY=false
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.etherpad.rule=Host(`pad.approvideo.org`)"
-      - "traefik.http.routers.etherpad.entrypoints=web,websecure"
-      - "traefik.http.routers.etherpad.tls=true"
-      - "traefik.http.services.etherpad.loadbalancer.server.port=9001"
+      MEDIAGOBLIN_DATABASE_URI: postgresql://mediagoblin:mediagoblin_pass@postgres:5432/mediagoblin
+    volumes:
+      - mediagoblin_data:/var/lib/mediagoblin
+    ports:
+      - "6543:6543"
+    depends_on:
+      - postgres
     networks:
-      - web
+      - appro-network
 
-  # 6. Frontend Hub (Static Site)
+  # PostgreSQL for MediaGoblin
+  postgres:
+    image: postgres:13
+    container_name: appro-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: mediagoblin
+      POSTGRES_USER: mediagoblin
+      POSTGRES_PASSWORD: mediagoblin_pass
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - appro-network
+
+  # Nginx Frontend (Simplified - no SSL issues)
   hub-frontend:
     image: nginx:alpine
-    container_name: approvideo-hub
+    container_name: appro-hub-frontend
     restart: unless-stopped
     volumes:
-      - ./frontend/hub.approvideo.org:/usr/share/nginx/html:ro
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./html:/usr/share/nginx/html:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - my-parse-server-local
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.hub.rule=Host(`hub.approvideo.org`)"
-      - "traefik.http.routers.hub.entrypoints=web,websecure"
-      - "traefik.http.routers.hub.tls=true"
+      - "traefik.http.routers.hub.entrypoints=web"
       - "traefik.http.services.hub.loadbalancer.server.port=80"
-      # Add CORS headers for API access
-      - "traefik.http.middlewares.cors.headers.accesscontrolallowmethods=GET,OPTIONS,PUT,POST,DELETE,PATCH"
-      - "traefik.http.middlewares.cors.headers.accesscontrolalloworiginlist=*"
-      - "traefik.http.middlewares.cors.headers.accesscontrolmaxage=100"
-      - "traefik.http.middlewares.cors.headers.addvaryheader=true"
-      - "traefik.http.routers.hub.middlewares=cors"
     networks:
-      - web
+      - appro-network
 
-  # === INFRASTRUCTURE ===
 
-  # 7. Traefik Reverse Proxy & Load Balancer
-  traefik:
-    image: traefik:v2.10
-    container_name: approvideo-traefik
+  # Caddy (Alternative to complex Traefik setup)
+  my-caddy-local:
+    image: caddy:alpine
+    container_name: appro-caddy
     restart: unless-stopped
     ports:
-      - "80:80"    # HTTP
-      - "443:443"  # HTTPS
-      - "8080:8080" # Traefik Dashboard
+      - "8080:8080"
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./traefik.yml:/etc/traefik/traefik.yml:ro
-      - ./certs:/certs:ro
-      - ./letsencrypt:/letsencrypt
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.traefik.rule=Host(`traefik.approvideo.org`)"
-      - "traefik.http.routers.traefik.service=api@internal"
-      - "traefik.http.routers.traefik.entrypoints=web,websecure"
-      - "traefik.http.routers.traefik.tls=true"
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./html:/usr/share/caddy:ro
+      - caddy_data:/data
+      - caddy_config:/config
     networks:
-      - web
+      - appro-network
 
-# === PERSISTENT DATA ===
+  # Etherpad (Optional)
+  etherpad:
+    image: etherpad/etherpad:latest
+    container_name: appro-etherpad
+    restart: unless-stopped
+    environment:
+      DB_TYPE: mysql
+      DB_HOST: etherpad-mysql
+      DB_PORT: 3306
+      DB_NAME: etherpad
+      DB_USER: etherpad
+      DB_PASS: etherpad_password
+    ports:
+      - "9001:9001"
+    depends_on:
+      - etherpad-mysql
+    networks:
+      - appro-network
+
+  # MySQL for Etherpad
+  etherpad-mysql:
+    image: mysql:8.0
+    container_name: appro-etherpad-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: etherpad
+      MYSQL_USER: etherpad
+      MYSQL_PASSWORD: etherpad_password
+      MYSQL_ROOT_PASSWORD: root_password
+    volumes:
+      - etherpad_mysql_data:/var/lib/mysql
+    networks:
+      - appro-network
+
 volumes:
   mongo_data:
-    driver: local
+  postgres_data:
   mediagoblin_data:
-    driver: local
+  caddy_data:
+  caddy_config:
+  etherpad_mysql_data:
 
-# === NETWORKS ===
 networks:
-  web:
+  appro-network:
     driver: bridge
-  backend:
-    driver: bridge
-    internal: true
